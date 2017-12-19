@@ -52,6 +52,7 @@ namespace realsense_camera
     const int FISHEYE_FPS = 60;
     const bool ENABLE_DEPTH = true;
     const bool ENABLE_COLOR = true;
+    const bool ENABLE_THROTTLE = false;   // software throttle
     const bool ENABLE_IR = false;
     const bool ENABLE_IR2 = false;
     const bool ENABLE_FISHEYE = true;
@@ -95,7 +96,7 @@ namespace realsense_camera
     // R200 Constants.
     // Indoor Range: 0.7m - 3.5m, Outdoor Range: 10m
     const float R200_MAX_Z = 10.0f;   // in meters
-    const std::string R200_CAMERA_FW_VERSION = "1.0.72.06";
+    const std::string R200_CAMERA_FW_VERSION = "1.0.72.10";
     // LR200 Constants.
     const std::string LR200_CAMERA_FW_VERSION = "2.0.71.18";
     // F200 Constants.

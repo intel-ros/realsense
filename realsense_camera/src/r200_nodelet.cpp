@@ -264,6 +264,9 @@ namespace realsense_camera
     // set the depth enable
     BaseNodelet::setDepthEnable(config.enable_depth);
 
+    // set the throttle enable
+    BaseNodelet::setThrottleEnable(config.enable_throttle);
+
     // Set common options
     rs_set_device_option(rs_device_, RS_OPTION_COLOR_BACKLIGHT_COMPENSATION, config.color_backlight_compensation, 0);
     rs_set_device_option(rs_device_, RS_OPTION_COLOR_BRIGHTNESS, config.color_brightness, 0);
@@ -273,8 +276,8 @@ namespace realsense_camera
     rs_set_device_option(rs_device_, RS_OPTION_COLOR_HUE, config.color_hue, 0);
     rs_set_device_option(rs_device_, RS_OPTION_COLOR_SATURATION, config.color_saturation, 0);
     rs_set_device_option(rs_device_, RS_OPTION_COLOR_SHARPNESS, config.color_sharpness, 0);
-    rs_set_device_option(rs_device_, RS_OPTION_COLOR_ENABLE_AUTO_EXPOSURE,
-    config.color_enable_auto_exposure, 0);
+    rs_set_device_option(rs_device_, RS_OPTION_COLOR_ENABLE_AUTO_EXPOSURE, config.color_enable_auto_exposure, 0);
+
     if (config.color_enable_auto_exposure == 0)
     {
       rs_set_device_option(rs_device_, RS_OPTION_COLOR_EXPOSURE, config.color_exposure, 0);
@@ -284,6 +287,18 @@ namespace realsense_camera
     if (config.color_enable_auto_white_balance == 0)
     {
       rs_set_device_option(rs_device_, RS_OPTION_COLOR_WHITE_BALANCE, config.color_white_balance, 0);
+    }
+
+    // Set R200 throttle options
+    if (bit_level.test(1)) {
+    	fps_throttle_[RS_STREAM_COLOR]     = config.throttle_color;
+    	fps_throttle_[RS_STREAM_DEPTH]     = config.throttle_depth;
+    	fps_throttle_[RS_STREAM_INFRARED]  = config.throttle_infra;
+    	fps_throttle_[RS_STREAM_INFRARED2] = config.throttle_infra;
+
+    	// Update frame periods.
+    	for (int index=0; index<STREAM_COUNT; index++)
+    		frame_period_[index] = 1000 / fps_throttle_[index];
     }
 
     // Set R200 specific options

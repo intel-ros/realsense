@@ -2,6 +2,12 @@
 Changelog for package realsense_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2017-11-23)
+-----------
+* Added launch file for multiple R200 rgbd nodes.
+* Added software throttling to streams.
+* Contributors: Duncan Iglesias
+
 1.8.0 (2017-03-27)
 ------------------
 * Enable configuration of the TF publication rate when using tf_dynamic

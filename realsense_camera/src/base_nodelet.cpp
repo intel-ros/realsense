@@ -167,7 +167,7 @@ namespace realsense_camera
     pnh_.param("enable_depth", enable_[RS_STREAM_DEPTH], ENABLE_DEPTH);
     pnh_.param("enable_color", enable_[RS_STREAM_COLOR], ENABLE_COLOR);
     pnh_.param("enable_ir", enable_[RS_STREAM_INFRARED], ENABLE_IR);
-    pnh_.param("enable_pointcloud", enable_pointcloud_, ENABLE_PC);
+    pnh_.param("enable_pointcloud", enable_pointcloud_,  ENABLE_PC);
     pnh_.param("enable_tf", enable_tf_, ENABLE_TF);
     pnh_.param("enable_tf_dynamic", enable_tf_dynamic_, ENABLE_TF_DYNAMIC);
     pnh_.param("tf_publication_rate", tf_publication_rate_, TF_PUBLICATION_RATE);
@@ -185,10 +185,27 @@ namespace realsense_camera
     pnh_.param("color_optical_frame_id", optical_frame_id_[RS_STREAM_COLOR], DEFAULT_COLOR_OPTICAL_FRAME_ID);
     pnh_.param("ir_optical_frame_id", optical_frame_id_[RS_STREAM_INFRARED], DEFAULT_IR_OPTICAL_FRAME_ID);
 
+    /* Software FPS Throttle  */
+    pnh_.param("enable_throttle",  enable_throttle_,                   ENABLE_THROTTLE);
+    pnh_.param("throttle_color",   fps_throttle_[RS_STREAM_COLOR],     COLOR_FPS      );
+    pnh_.param("throttle_depth",   fps_throttle_[RS_STREAM_DEPTH],     DEPTH_FPS      );
+    pnh_.param("throttle_infra",   fps_throttle_[RS_STREAM_INFRARED],  DEPTH_FPS      );
+    pnh_.param("throttle_infra",   fps_throttle_[RS_STREAM_INFRARED2], DEPTH_FPS      );
+    pnh_.param("throttle_fisheye", fps_throttle_[RS_STREAM_FISHEYE],   FISHEYE_FPS    );
+
+    /* Set Stream Throttle Periods */
+    for (int index=0; index < STREAM_COUNT; index++)
+    	frame_period_[index] = 1000 / fps_throttle_[index];
+
     // set IR stream to match depth
     width_[RS_STREAM_INFRARED] = width_[RS_STREAM_DEPTH];
     height_[RS_STREAM_INFRARED] = height_[RS_STREAM_DEPTH];
     fps_[RS_STREAM_INFRARED] = fps_[RS_STREAM_DEPTH];
+
+    // set IR2 stream to match depth
+    width_[RS_STREAM_INFRARED2] = width_[RS_STREAM_DEPTH];
+    height_[RS_STREAM_INFRARED2] = height_[RS_STREAM_DEPTH];
+    fps_[RS_STREAM_INFRARED2] = fps_[RS_STREAM_DEPTH];
   }
 
   /*
@@ -356,7 +373,7 @@ namespace realsense_camera
           warning_msg = warning_msg + "\n\t\t\t\t- " + motion_module_warning_msg;
         }
       }
-      ROS_INFO_STREAM(nodelet_name_ + detected_camera_msg);
+      //ROS_INFO_STREAM(nodelet_name_ + detected_camera_msg);
       if (warning_msg != " - Detected unvalidated firmware:")
       {
         ROS_WARN_STREAM(nodelet_name_ + warning_msg);
@@ -863,6 +880,19 @@ namespace realsense_camera
   }
 
   /*
+  * Set throttle enable
+  */
+  void BaseNodelet::setThrottleEnable(bool &enable_throttle)
+  {
+    // Set flags
+    if (enable_throttle && !enable_throttle_)
+	  ROS_INFO_STREAM(nodelet_name_ << " - Enabling stream throttling.");
+	else if (!enable_throttle && enable_throttle_)
+	  ROS_INFO_STREAM(nodelet_name_ << " - Disabling stream throttling.");
+	enable_throttle_ = enable_throttle;
+  }
+
+  /*
    * Determine the timestamp for the publish topic.
    */
   ros::Time BaseNodelet::getTimestamp(rs_stream stream_index, double frame_ts)
@@ -879,6 +909,12 @@ namespace realsense_camera
     std::unique_lock<std::mutex> lock(frame_mutex_[stream_index]);
 
     double frame_ts = frame.get_timestamp();
+
+    // Return if insufficient time has passed since last frame.
+    auto index = (rs_stream) stream_index;
+    if (enable_throttle_ && (frame_ts - ts_[index]) <= frame_period_[index])
+    	return;
+
     if (ts_[stream_index] != frame_ts)  // Publish frames only if its not duplicate
     {
       setImageData(stream_index, frame);
@@ -924,6 +960,11 @@ namespace realsense_camera
    */
   void BaseNodelet::publishPCTopic()
   {
+	// Return if insufficient time has passed since last frame.
+	double t_now = (double)ros::Time::now().nsec * (1e-6);
+	if ((t_now - ts_[RS_STREAM_DEPTH]) <= frame_period_[RS_STREAM_DEPTH])
+		return;
+
     cv::Mat & image_color = image_[RS_STREAM_COLOR];
     // Publish pointcloud only if there is at least one subscriber.
     if (pointcloud_publisher_.getNumSubscribers() > 0 && rs_is_stream_enabled(rs_device_, RS_STREAM_DEPTH, 0) == 1)
@@ -1304,10 +1345,8 @@ namespace realsense_camera
                                                    const std::string& camera_name,
                                                    const std::string& camera_serial_number)
   {
-    for (auto& elem : CAMERA_NAME_TO_VALIDATED_FIRMWARE)
-    {
-        std::cout << elem.first << " ; " << elem.second << std::endl;
-    }
+    //for (auto& elem : CAMERA_NAME_TO_VALIDATED_FIRMWARE)
+    //    std::cout << elem.first << " ; " << elem.second << std::endl;
 
     std::string warning_msg = "";
     std::string cam_name = camera_name + "_" + fw_type;
