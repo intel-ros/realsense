@@ -69,6 +69,7 @@ add_message_files(
     FILES
     IMUInfo.msg
     Extrinsics.msg
+    Confidence.msg
     )
 
 generate_messages(
